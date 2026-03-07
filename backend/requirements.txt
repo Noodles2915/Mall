@@ -3,3 +3,5 @@ djangorestframework>=3.16
 markdown>=3.3
 django-filter>=25.0
 djangorestframework-simplejwt>=5.3
+Pillow>=10.0
+mysqlclient>=2.2

@@ -16,22 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework import routers, serializers, viewsets
-
-from user.models import User
-
-class UserSerializer(serializers.HyperlinkedModelSerializer):
-    # 序列化用户信息的序列化器
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'avatar']
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class= UserSerializer
-
-router = routers.DefaultRouter()
-router.register(r'users', UserViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
