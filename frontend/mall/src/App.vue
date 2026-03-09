@@ -83,6 +83,9 @@ onMounted(() => {
       <nav class="nav-links">
         <RouterLink to="/home">首页</RouterLink>
         <RouterLink to="/products">商品列表</RouterLink>
+        <RouterLink v-show="isLoggedIn" to="/cart">购物车</RouterLink>
+        <RouterLink v-show="isLoggedIn" to="/orders">订单</RouterLink>
+        <RouterLink v-show="isLoggedIn" to="/addresses">地址</RouterLink>
       </nav>
       <div class="auth-block">
         <p v-if="isLoggedIn" class="welcome">欢迎，{{ username || '已登录用户' }}</p>
@@ -91,6 +94,7 @@ onMounted(() => {
           <input v-model="loginForm.password" type="password" placeholder="密码" required />
           <button type="submit" :disabled="authLoading">{{ authLoading ? '登录中' : '登录' }}</button>
         </form>
+        <RouterLink v-if="!isLoggedIn" class="register-link" to="/register">注册</RouterLink>
         <button v-if="isLoggedIn" class="ghost-btn" type="button" @click="logout">退出</button>
       </div>
     </header>
@@ -169,17 +173,24 @@ onMounted(() => {
 }
 
 .mini-login button,
-.ghost-btn {
+.ghost-btn,
+.register-link {
   border: none;
   border-radius: 0.6rem;
   padding: 0.45rem 0.7rem;
   background: #1f9f78;
   color: #fff;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .ghost-btn {
   background: #5f6f78;
+}
+
+.register-link {
+  background: #0c6f57;
 }
 
 .welcome {

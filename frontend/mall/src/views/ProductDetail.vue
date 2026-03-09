@@ -7,6 +7,7 @@ import {
   getServiceMessages,
   createServiceMessage,
 } from '@/services/product-center'
+import { addCartItem } from '@/services/order-center'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +18,7 @@ const loading = ref(false)
 const error = ref('')
 const product = ref<ProductDetail | null>(null)
 const selectedImageIndex = ref(0)
+const quantity = ref(1)
 
 // Service Messages
 const messagesLoading = ref(false)
@@ -26,6 +28,10 @@ const newMessageContent = ref('')
 const submittingMessage = ref(false)
 const messageSubmitError = ref('')
 const messageSubmitSuccess = ref('')
+
+// Shopping cart
+const addingToCart = ref(false)
+const cartMessage = ref('')
 
 // Receive accessToken and username from parent component context
 const accessToken = ref(localStorage.getItem('mall_access_token') || '')
@@ -98,6 +104,37 @@ async function submitServiceMessage() {
   }
 }
 
+async function handleAddToCart() {
+  if (!isLoggedIn.value) {
+    router.push('/home')
+    return
+  }
+
+  if (!product.value) return
+  if (quantity.value < 1) return
+
+  addingToCart.value = true
+  cartMessage.value = ''
+  try {
+    await addCartItem(
+      {
+        product_id: product.value.id,
+        quantity: quantity.value,
+      },
+      accessToken.value,
+    )
+    cartMessage.value = '已添加到购物车'
+    setTimeout(() => {
+      cartMessage.value = ''
+    }, 2000)
+    quantity.value = 1
+  } catch (err) {
+    cartMessage.value = err instanceof Error ? err.message : '添加购物车失败'
+  } finally {
+    addingToCart.value = false
+  }
+}
+
 onMounted(() => {
   void loadProductDetail()
   void loadServiceMessages()
@@ -162,6 +199,41 @@ onMounted(() => {
 
           <div class="customer-hint">
             <p>{{ product.customer_service_hint }}</p>
+          </div>
+
+          <!-- Add to Cart Section -->
+          <div class="add-to-cart-section">
+            <div v-if="cartMessage" class="cart-message" :class="{ success: cartMessage.includes('已添加') }">
+              {{ cartMessage }}
+            </div>
+            <div class="quantity-selector">
+              <label>数量:</label>
+              <button
+                type="button"
+                class="qty-btn"
+                @click="quantity = Math.max(1, quantity - 1)"
+                :disabled="addingToCart"
+              >
+                -
+              </button>
+              <input v-model.number="quantity" type="number" min="1" :disabled="addingToCart" />
+              <button
+                type="button"
+                class="qty-btn"
+                @click="quantity = Math.min(product.stock, quantity + 1)"
+                :disabled="addingToCart || product.stock === 0"
+              >
+                +
+              </button>
+            </div>
+            <button
+              class="add-btn"
+              type="button"
+              :disabled="addingToCart || product.stock === 0"
+              @click="handleAddToCart"
+            >
+              {{ addingToCart ? '添加中...' : product.stock === 0 ? '缺货' : '加入购物车' }}
+            </button>
           </div>
         </div>
       </section>
@@ -606,6 +678,105 @@ onMounted(() => {
 
 .spinner {
   font-weight: 600;
+}
+
+/* Add to Cart Section */
+.add-to-cart-section {
+  padding: 1rem;
+  background: #f0fef8;
+  border-radius: 0.6rem;
+  border: 2px solid #d4e6f0;
+}
+
+.cart-message {
+  padding: 0.6rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+  background: #ffe8e3;
+  color: #8e3026;
+}
+
+.cart-message.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.quantity-selector label {
+  font-weight: 600;
+  color: #1d5166;
+  min-width: 40px;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #b6cfdc;
+  background: white;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1d5166;
+  transition: all 0.2s;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #1f9f78;
+  color: white;
+  border-color: #1f9f78;
+}
+
+.qty-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-selector input {
+  width: 60px;
+  height: 32px;
+  padding: 0.4rem;
+  border: 1px solid #b6cfdc;
+  border-radius: 0.4rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.quantity-selector input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: #1f9f78;
+  color: white;
+  border: none;
+  border-radius: 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #0c6f57;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(31, 159, 120, 0.3);
+}
+
+.add-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 @media (max-width: 1024px) {

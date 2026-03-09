@@ -62,3 +62,67 @@ export interface ServiceMessage {
 export interface ServiceMessageInput {
   content: string
 }
+
+export interface CartItem {
+  id: number
+  product: number
+  product_name: string
+  product_price: string
+  product_cover_url: string
+  quantity: number
+  subtotal: string
+}
+
+export interface ShoppingCart {
+  id: number
+  items: CartItem[]
+  total_price: string
+  total_quantity: number
+  updated_at: string
+}
+
+export interface OrderItem {
+  id: number
+  product_name: string
+  product_price: string
+  quantity: number
+  subtotal: string
+}
+
+export interface Order {
+  id: number
+  order_number: string
+  status: string
+  status_display: string
+  address_name: string
+  address_phone: string
+  address_province: string
+  address_city: string
+  address_district: string
+  address_detail: string
+  remarks: string
+  total_price: string
+  payment_method: string
+  items: OrderItem[]
+  created_at: string
+  paid_at: string | null
+  shipped_at: string | null
+  received_at: string | null
+  cancelled_at: string | null
+}
+
+export interface OrderListItem {
+  id: number
+  order_number: string
+  status: string
+  status_display: string
+  total_price: string
+  items_count: number
+  created_at: string
+}
+
+export interface OrderCreatePayload {
+  address_id: number
+  remarks: string
+  payment_method: string
+}
