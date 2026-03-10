@@ -329,10 +329,10 @@ class AdminOrderViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def check_admin_permission(self, request):
-        """检查是否是管理员"""
-        if not request.user.is_staff:
+        """检查是否是管理员或商家"""
+        if not (request.user.is_admin_role or request.user.is_merchant_role):
             return Response(
-                {'error': '只有管理员可以访问'},
+                {'error': '只有管理员或商家可以访问'},
                 status=status.HTTP_403_FORBIDDEN
             )
 

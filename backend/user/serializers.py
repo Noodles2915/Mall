@@ -4,12 +4,16 @@ from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "username", "email", "avatar"]
+        fields = ["id", "username", "email", "avatar", "role", "role_display"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    # Override default username field validators to allow common Chinese usernames.
+    username = serializers.CharField(max_length=150, trim_whitespace=True)
     password = serializers.CharField(write_only=True)
 
     class Meta:
@@ -17,9 +21,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ["username", "email", "password"]
 
     def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
+        username = value.strip()
+        if not username:
+            raise serializers.ValidationError("用户名不能为空")
+        if User.objects.filter(username=username).exists():
             raise serializers.ValidationError("用户名已存在")
-        return value
+        return username
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -60,3 +67,14 @@ class UserInfoUpdateSerializer(serializers.ModelSerializer):
         if User.objects.exclude(id=user.id).filter(email=value).exists():
             raise serializers.ValidationError("邮箱已被使用")
         return value
+
+
+class UserRoleListSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
+class UserRoleUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["role"]

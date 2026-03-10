@@ -6,8 +6,33 @@ from utils import avatar_path
 
 
 class User(AbstractUser):
+    ROLE_NORMAL = "normal"
+    ROLE_ADMIN = "admin"
+    ROLE_MERCHANT = "merchant"
+    ROLE_CHOICES = [
+        (ROLE_NORMAL, "普通用户"),
+        (ROLE_ADMIN, "管理员"),
+        (ROLE_MERCHANT, "商家"),
+    ]
+
     email = models.EmailField(verbose_name="邮箱", unique=True)
     avatar = models.ImageField(verbose_name="头像", null=True, blank=True, upload_to=avatar_path)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_NORMAL, verbose_name="角色")
+
+    def save(self, *args, **kwargs):
+        if self.is_superuser:
+            self.role = self.ROLE_ADMIN
+
+        self.is_staff = self.role in {self.ROLE_ADMIN, self.ROLE_MERCHANT}
+        super().save(*args, **kwargs)
+
+    @property
+    def is_admin_role(self):
+        return self.role == self.ROLE_ADMIN
+
+    @property
+    def is_merchant_role(self):
+        return self.role == self.ROLE_MERCHANT
 
     class Meta:
         verbose_name = "用户"

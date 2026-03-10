@@ -7,10 +7,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .address_serializers import AddressSerializer
-from .models import Address
+from .models import Address, User
 from .serializers import (
     LoginSerializer,
     RegisterSerializer,
+    UserRoleListSerializer,
+    UserRoleUpdateSerializer,
     UserInfoUpdateSerializer,
     UserSerializer,
 )
@@ -153,3 +155,41 @@ class AddressSetDefaultView(APIView):
         address.is_default = True
         address.save(update_fields=["is_default"])
         return Response({"code": 0, "message": "ok", "data": AddressSerializer(address).data})
+
+
+class RoleListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        roles = [{"value": value, "label": label} for value, label in request.user.ROLE_CHOICES]
+        serializer = UserRoleListSerializer(roles, many=True)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
+
+
+class AdminUserListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_admin_role:
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        users = UserSerializer(User.objects.all().order_by("id"), many=True)
+        return Response({"code": 0, "message": "ok", "data": users.data})
+
+
+class AdminUserRoleUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if not request.user.is_admin_role:
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"code": 1007, "message": "用户不存在"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserRoleUpdateSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"code": 0, "message": "ok", "data": UserSerializer(user).data})
