@@ -11,6 +11,9 @@ import OrderPayment from '@/views/OrderPayment.vue'
 import OrderList from '@/views/OrderList.vue'
 import OrderDetail from '@/views/OrderDetail.vue'
 import UserCenter from '@/views/UserCenter.vue'
+import MerchantProductShelf from '@/views/MerchantProductShelf.vue'
+import MerchantShipping from '@/views/MerchantShipping.vue'
+import MerchantServiceMessages from '@/views/MerchantServiceMessages.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +77,21 @@ const router = createRouter({
       path: '/user-center',
       name: 'UserCenter',
       component: UserCenter,
+    },
+    {
+      path: '/merchant/products',
+      name: 'MerchantProductShelf',
+      component: MerchantProductShelf,
+    },
+    {
+      path: '/merchant/shipping',
+      name: 'MerchantShipping',
+      component: MerchantShipping,
+    },
+    {
+      path: '/merchant/service-messages',
+      name: 'MerchantServiceMessages',
+      component: MerchantServiceMessages,
     },
     {
       path: '/',

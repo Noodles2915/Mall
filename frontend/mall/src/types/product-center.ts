@@ -24,6 +24,7 @@ export interface ProductBase {
   is_hot: boolean
   category: number
   category_name: string
+  merchant_id?: number | null
 }
 
 export interface HomeData {
@@ -57,6 +58,15 @@ export interface ServiceMessage {
   content: string
   reply: string
   created_at: string
+}
+
+export interface AdminServiceMessage extends ServiceMessage {
+  product_name: string
+  user_id: number
+}
+
+export interface AdminServiceMessageReplyPayload {
+  reply: string
 }
 
 export interface ServiceMessageInput {
@@ -125,4 +135,27 @@ export interface OrderCreatePayload {
   address_id: number
   remarks: string
   payment_method: string
+}
+
+export interface MerchantProductPayload {
+  category: number
+  name: string
+  subtitle: string
+  cover_url: string
+  price: string
+  stock: number
+  is_hot: boolean
+  is_active: boolean
+  description: string
+  specs: Record<string, string[]>
+  customer_service_hint: string
+}
+
+export interface MerchantProductItem extends ProductBase {
+  is_active: boolean
+  description: string
+  specs: Record<string, string[]>
+  customer_service_hint: string
+  created_at: string
+  updated_at: string
 }

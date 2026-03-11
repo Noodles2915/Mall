@@ -62,3 +62,12 @@ export function cancelOrder(orderId: number, accessToken: string) {
 export function receiveOrder(orderId: number, accessToken: string) {
   return request<Order>(`/api/orders/orders/${orderId}/receive/`, 'POST', {}, accessToken)
 }
+
+export function getAdminOrders(accessToken: string, status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return request<OrderListItem[]>(`/api/orders/admin/orders/${query}`, 'GET', undefined, accessToken)
+}
+
+export function shipAdminOrder(orderId: number, accessToken: string) {
+  return request<Order>(`/api/orders/admin/orders/${orderId}/ship/`, 'POST', {}, accessToken)
+}

@@ -31,7 +31,7 @@ class CartViewSet(viewsets.ViewSet):
         """获取购物车"""
         cart = self.get_or_create_cart(request.user)
         serializer = ShoppingCartSerializer(cart)
-        return Response(serializer.data)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
 
     @action(detail=False, methods=['post'])
     def add_item(self, request):
@@ -48,7 +48,7 @@ class CartViewSet(viewsets.ViewSet):
         # 检查库存
         if product.stock < quantity:
             return Response(
-                {'error': '库存不足'},
+                {"code": 1, "message": "库存不足", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -62,14 +62,14 @@ class CartViewSet(viewsets.ViewSet):
             cart_item.quantity += quantity
             if cart_item.product.stock < cart_item.quantity:
                 return Response(
-                    {'error': '库存不足'},
+                    {"code": 1, "message": "库存不足", "data": None},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             cart_item.save()
 
         cart.save()  # 更新购物车更新时间
         cart_serializer = ShoppingCartSerializer(cart)
-        return Response(cart_serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"code": 0, "message": "ok", "data": cart_serializer.data}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['put'], url_path=r'items/(?P<item_id>\d+)')
     def update_item(self, request, item_id=None):
@@ -81,14 +81,14 @@ class CartViewSet(viewsets.ViewSet):
             cart_item = CartItem.objects.get(id=item_id, shopping_cart__user=request.user)
         except CartItem.DoesNotExist:
             return Response(
-                {'error': '购物车项目不存在'},
+                {"code": 1, "message": "购物车项目不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         # 检查库存
         if cart_item.product.stock < serializer.validated_data['quantity']:
             return Response(
-                {'error': '库存不足'},
+                {"code": 1, "message": "库存不足", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -97,7 +97,7 @@ class CartViewSet(viewsets.ViewSet):
         cart_item.shopping_cart.save()
 
         cart_serializer = ShoppingCartSerializer(cart_item.shopping_cart)
-        return Response(cart_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": cart_serializer.data})
 
     @action(detail=False, methods=['delete'], url_path=r'items/(?P<item_id>\d+)')
     def remove_item(self, request, item_id=None):
@@ -106,7 +106,7 @@ class CartViewSet(viewsets.ViewSet):
             cart_item = CartItem.objects.get(id=item_id, shopping_cart__user=request.user)
         except CartItem.DoesNotExist:
             return Response(
-                {'error': '购物车项目不存在'},
+                {"code": 1, "message": "购物车项目不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -115,7 +115,7 @@ class CartViewSet(viewsets.ViewSet):
         cart.save()
 
         cart_serializer = ShoppingCartSerializer(cart)
-        return Response(cart_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": cart_serializer.data})
 
     @action(detail=False, methods=['delete'])
     def clear(self, request):
@@ -129,7 +129,7 @@ class CartViewSet(viewsets.ViewSet):
 
         cart = self.get_or_create_cart(request.user)
         serializer = ShoppingCartSerializer(cart)
-        return Response(serializer.data)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
 
 
 class OrderViewSet(viewsets.ViewSet):
@@ -145,7 +145,7 @@ class OrderViewSet(viewsets.ViewSet):
         """订单列表"""
         orders = Order.objects.filter(user=request.user)
         serializer = OrderListSerializer(orders, many=True)
-        return Response(serializer.data)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
 
     @action(detail=False, methods=['get'], url_path=r'(?P<order_id>\d+)')
     def retrieve(self, request, order_id=None):
@@ -154,12 +154,12 @@ class OrderViewSet(viewsets.ViewSet):
             order = Order.objects.get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在'},
+                {"code": 1, "message": "订单不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = OrderSerializer(order)
-        return Response(serializer.data)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
 
     @action(detail=False, methods=['post'])
     def create_order(self, request):
@@ -171,12 +171,12 @@ class OrderViewSet(viewsets.ViewSet):
             cart = ShoppingCart.objects.get(user=request.user)
             if not cart.items.exists():
                 return Response(
-                    {'error': '购物车为空'},
+                    {"code": 1, "message": "购物车为空", "data": None},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         except ShoppingCart.DoesNotExist:
             return Response(
-                {'error': '购物车为空'},
+                {"code": 1, "message": "购物车为空", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -188,7 +188,7 @@ class OrderViewSet(viewsets.ViewSet):
             for cart_item in cart.items.all():
                 if cart_item.product.stock < cart_item.quantity:
                     return Response(
-                        {'error': f'商品 {cart_item.product.name} 库存不足'},
+                        {"code": 1, "message": f"商品 {cart_item.product.name} 库存不足", "data": None},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 total_price += cart_item.get_subtotal()
@@ -227,7 +227,7 @@ class OrderViewSet(viewsets.ViewSet):
             cart.items.all().delete()
 
         order_serializer = OrderSerializer(order)
-        return Response(order_serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"code": 0, "message": "ok", "data": order_serializer.data}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'], url_path=r'(?P<order_id>\d+)/pay')
     def pay(self, request, order_id=None):
@@ -239,13 +239,13 @@ class OrderViewSet(viewsets.ViewSet):
             order = Order.objects.get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在'},
+                {"code": 1, "message": "订单不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if not order.can_pay():
             return Response(
-                {'error': f'订单状态为 {order.get_status_display()} 时无法支付'},
+                {"code": 1, "message": f"订单状态为 {order.get_status_display()} 时无法支付", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -254,12 +254,12 @@ class OrderViewSet(viewsets.ViewSet):
             order.pay()
         except ValueError as e:
             return Response(
-                {'error': str(e)},
+                {"code": 1, "message": str(e), "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         order_serializer = OrderSerializer(order)
-        return Response(order_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": order_serializer.data})
 
     @action(detail=False, methods=['post'], url_path=r'(?P<order_id>\d+)/cancel')
     def cancel_order(self, request, order_id=None):
@@ -268,13 +268,13 @@ class OrderViewSet(viewsets.ViewSet):
             order = Order.objects.get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在'},
+                {"code": 1, "message": "订单不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if not order.can_cancel():
             return Response(
-                {'error': f'订单状态为 {order.get_status_display()} 时无法取消'},
+                {"code": 1, "message": f"订单状态为 {order.get_status_display()} 时无法取消", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -288,12 +288,12 @@ class OrderViewSet(viewsets.ViewSet):
                 product.save()
         except ValueError as e:
             return Response(
-                {'error': str(e)},
+                {"code": 1, "message": str(e), "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         order_serializer = OrderSerializer(order)
-        return Response(order_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": order_serializer.data})
 
     @action(detail=False, methods=['post'], url_path=r'(?P<order_id>\d+)/receive')
     def receive_order(self, request, order_id=None):
@@ -302,13 +302,13 @@ class OrderViewSet(viewsets.ViewSet):
             order = Order.objects.get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在'},
+                {"code": 1, "message": "订单不存在", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if not order.can_receive():
             return Response(
-                {'error': f'订单状态为 {order.get_status_display()} 时无法确认收货'},
+                {"code": 1, "message": f"订单状态为 {order.get_status_display()} 时无法确认收货", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -316,12 +316,12 @@ class OrderViewSet(viewsets.ViewSet):
             order.receive()
         except ValueError as e:
             return Response(
-                {'error': str(e)},
+                {"code": 1, "message": str(e), "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         order_serializer = OrderSerializer(order)
-        return Response(order_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": order_serializer.data})
 
 
 class AdminOrderViewSet(viewsets.ViewSet):
@@ -332,7 +332,7 @@ class AdminOrderViewSet(viewsets.ViewSet):
         """检查是否是管理员或商家"""
         if not (request.user.is_admin_role or request.user.is_merchant_role):
             return Response(
-                {'error': '只有管理员或商家可以访问'},
+                {"code": 1003, "message": "只有管理员或商家可以访问", "data": None},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -360,7 +360,7 @@ class AdminOrderViewSet(viewsets.ViewSet):
         if request.user.is_merchant_role:
             serializer_context['merchant_user'] = request.user
         serializer = OrderListSerializer(orders, many=True, context=serializer_context)
-        return Response(serializer.data)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
 
     @action(detail=False, methods=['post'], url_path=r'(?P<order_id>\d+)/ship')
     def ship(self, request, order_id=None):
@@ -374,13 +374,13 @@ class AdminOrderViewSet(viewsets.ViewSet):
             order = manageable_orders.get(id=order_id)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在或无权限操作'},
+                {"code": 1, "message": "订单不存在或无权限操作", "data": None},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if not order.can_ship():
             return Response(
-                {'error': f'订单状态为 {order.get_status_display()} 时无法发货'},
+                {"code": 1, "message": f"订单状态为 {order.get_status_display()} 时无法发货", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -388,7 +388,7 @@ class AdminOrderViewSet(viewsets.ViewSet):
             order.ship()
         except ValueError as e:
             return Response(
-                {'error': str(e)},
+                {"code": 1, "message": str(e), "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -396,4 +396,4 @@ class AdminOrderViewSet(viewsets.ViewSet):
         if request.user.is_merchant_role:
             serializer_context['merchant_user'] = request.user
         order_serializer = OrderSerializer(order, context=serializer_context)
-        return Response(order_serializer.data)
+        return Response({"code": 0, "message": "ok", "data": order_serializer.data})

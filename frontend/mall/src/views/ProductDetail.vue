@@ -43,10 +43,25 @@ const selectedImage = computed(
   () =>
     product.value?.images[selectedImageIndex.value] || {
       id: 0,
-      image_url: '',
+      image_url: product.value?.cover_url || '',
       sort: 0,
     },
 )
+
+function formatSpecValues(values: unknown) {
+  if (Array.isArray(values)) {
+    return values.map((item) => String(item)).join(', ')
+  }
+  if (values === null || values === undefined) {
+    return '-'
+  }
+  if (typeof values === 'object') {
+    return Object.values(values as Record<string, unknown>)
+      .map((item) => String(item))
+      .join(', ')
+  }
+  return String(values)
+}
 
 async function loadProductDetail() {
   error.value = ''
@@ -193,7 +208,7 @@ onMounted(() => {
             <h3>规格信息</h3>
             <div v-for="(values, key) in product.specs" :key="key" class="spec-item">
               <span class="spec-label">{{ key }}:</span>
-              <span class="spec-values">{{ values.join(', ') }}</span>
+              <span class="spec-values">{{ formatSpecValues(values) }}</span>
             </div>
           </div>
 

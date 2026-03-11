@@ -46,7 +46,10 @@ async function loadData() {
     if (defaultAddress) {
       selectedAddressId.value = defaultAddress.id
     } else if (addresses.value.length > 0) {
-      selectedAddressId.value = addresses.value[0].id
+      const firstAddress = addresses.value[0]
+      if (firstAddress) {
+        selectedAddressId.value = firstAddress.id
+      }
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载数据失败'

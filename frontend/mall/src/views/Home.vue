@@ -16,7 +16,7 @@ const hotProducts = ref<ProductBase[]>([])
 const currentBannerIndex = ref(0)
 
 const totalBanners = computed(() => banners.value.length)
-const currentBanner = computed(() => banners.value[currentBannerIndex.value])
+const currentBanner = computed(() => banners.value[currentBannerIndex.value] || null)
 
 async function loadHomeData() {
   error.value = ''
@@ -58,7 +58,7 @@ onMounted(() => {
     <!-- Carousel / Banners Section -->
     <section class="carousel-section">
       <div v-if="loading.banners" class="spinner">加载轮播图中...</div>
-      <div v-else-if="banners.length > 0" class="carousel">
+      <div v-else-if="currentBanner" class="carousel">
         <RouterLink
           :to="currentBanner.link"
           class="carousel-main"

@@ -14,6 +14,8 @@ from .serializers import (
     MerchantProductCreateUpdateSerializer,
     MerchantProductDetailSerializer,
     ServiceMessageSerializer,
+    ServiceMessageAdminSerializer,
+    ServiceMessageAdminReplySerializer,
 )
 
 
@@ -199,3 +201,91 @@ class MerchantProductDetailManageView(APIView):
 
         product.delete()
         return Response({"code": 0, "message": "ok"}, status=status.HTTP_200_OK)
+
+
+class MerchantProductShelfActionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        return generics.get_object_or_404(Product.objects.select_related("category"), pk=pk)
+
+    def post(self, request, pk, action):
+        product = self.get_object(pk)
+        if not can_manage_product(request.user, product):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        if action == "publish":
+            if product.stock <= 0:
+                return Response({"code": 1012, "message": "库存不足，无法上架"}, status=status.HTTP_400_BAD_REQUEST)
+            if not product.category.is_active:
+                return Response({"code": 1013, "message": "商品分类已停用，无法上架"}, status=status.HTTP_400_BAD_REQUEST)
+            product.is_active = True
+            product.save(update_fields=["is_active", "updated_at"])
+            return Response({"code": 0, "message": "商品已上架", "data": MerchantProductDetailSerializer(product).data})
+
+        if action == "unpublish":
+            product.is_active = False
+            product.save(update_fields=["is_active", "updated_at"])
+            return Response({"code": 0, "message": "商品已下架", "data": MerchantProductDetailSerializer(product).data})
+
+        return Response({"code": 1004, "message": "参数错误"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ServiceMessageAdminListView(APIView):
+    """获取所有客服留言（管理员/商家专用）"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not is_admin_or_merchant(request.user):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = ServiceMessage.objects.select_related("user", "product")
+        
+        # 商家只能看自己商品的留言
+        if request.user.is_merchant_role:
+            queryset = queryset.filter(product__merchant=request.user)
+        
+        # 支持按商品ID筛选
+        product_id = request.query_params.get("product_id")
+        if product_id and product_id.isdigit():
+            queryset = queryset.filter(product_id=int(product_id))
+        
+        # 支持按是否有回复筛选
+        has_reply = request.query_params.get("has_reply")
+        if has_reply:
+            if has_reply.lower() in {"1", "true", "yes"}:
+                queryset = queryset.exclude(reply="")
+            elif has_reply.lower() in {"0", "false", "no"}:
+                queryset = queryset.filter(reply="")
+        
+        serializer = ServiceMessageAdminSerializer(queryset, many=True)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
+
+
+class ServiceMessageAdminReplyView(APIView):
+    """回复客服留言（管理员/商家专用）"""
+    permission_classes = [IsAuthenticated]
+
+    def get_message(self, message_id):
+        return generics.get_object_or_404(ServiceMessage.objects.select_related("product"), pk=message_id)
+
+    def post(self, request, message_id):
+        if not is_admin_or_merchant(request.user):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        message = self.get_message(message_id)
+        
+        # 商家只能回复自己商品的留言
+        if request.user.is_merchant_role and message.product.merchant_id != request.user.id:
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ServiceMessageAdminReplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        message.reply = serializer.validated_data["reply"]
+        message.save(update_fields=["reply"])
+        
+        return Response(
+            {"code": 0, "message": "ok", "data": ServiceMessageAdminSerializer(message).data},
+            status=status.HTTP_200_OK,
+        )

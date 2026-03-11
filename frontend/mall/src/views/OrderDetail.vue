@@ -197,7 +197,7 @@ onMounted(() => {
         <button
           v-if="order.status === 'pending_payment'"
           class="btn-primary"
-          @click="() => router.push(`/order/payment/${order.id}`)"
+          @click="() => router.push(`/order/payment/${order?.id}`)"
         >
           继续支付
         </button>

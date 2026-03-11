@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from urllib.parse import urlparse
 
 from .models import HomeBanner, Product, ProductCategory, ProductImage, ServiceMessage
 
@@ -70,6 +71,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class MerchantProductCreateUpdateSerializer(serializers.ModelSerializer):
+    cover_url = serializers.CharField(max_length=500, trim_whitespace=True)
+
     class Meta:
         model = Product
         fields = [
@@ -85,6 +88,27 @@ class MerchantProductCreateUpdateSerializer(serializers.ModelSerializer):
             "specs",
             "customer_service_hint",
         ]
+
+    def validate_cover_url(self, value):
+        normalized = (
+            value.strip()
+            .replace("：", ":")
+            .replace("／", "/")
+            .replace("。", ".")
+        )
+        if not normalized:
+            raise serializers.ValidationError("封面图 URL 不能为空")
+
+        if normalized.startswith("//"):
+            normalized = f"https:{normalized}"
+        elif not normalized.lower().startswith(("http://", "https://")):
+            normalized = f"https://{normalized}"
+
+        parsed = urlparse(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise serializers.ValidationError("请输入有效的 http/https 图片地址")
+
+        return normalized
 
 
 class MerchantProductDetailSerializer(serializers.ModelSerializer):
@@ -120,3 +144,20 @@ class ServiceMessageSerializer(serializers.ModelSerializer):
         model = ServiceMessage
         fields = ["id", "product", "username", "content", "reply", "created_at"]
         read_only_fields = ["id", "username", "reply", "created_at", "product"]
+
+
+class ServiceMessageAdminSerializer(serializers.ModelSerializer):
+    """管理员/商家获取客服留言的序列化器"""
+    username = serializers.CharField(source="user.username", read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+
+    class Meta:
+        model = ServiceMessage
+        fields = ["id", "product", "product_name", "user_id", "username", "content", "reply", "created_at"]
+        read_only_fields = ["id", "product", "product_name", "user_id", "username", "content", "created_at"]
+
+
+class ServiceMessageAdminReplySerializer(serializers.Serializer):
+    """管理员/商家回复客服留言的序列化器"""
+    reply = serializers.CharField(max_length=1000, min_length=1)

@@ -7,15 +7,22 @@ import { clearAuthSession, getAuthState, onAuthChanged } from '@/utils/auth'
 const accessToken = ref('')
 const refreshToken = ref('')
 const username = ref('')
+const userRole = ref('')
 let stopAuthListener: (() => void) | null = null
 
 const isLoggedIn = computed(() => Boolean(accessToken.value))
+const canManageMerchantProducts = computed(
+  () => userRole.value === 'admin' || userRole.value === 'merchant',
+)
 
 function syncAuthState() {
   const state = getAuthState()
   accessToken.value = state.accessToken
   refreshToken.value = state.refreshToken
   username.value = state.username
+  if (!state.accessToken) {
+    userRole.value = ''
+  }
 }
 
 async function hydrateUser() {
@@ -25,6 +32,7 @@ async function hydrateUser() {
   try {
     const user = await getMe(accessToken.value)
     username.value = user.username
+    userRole.value = user.role || ''
     localStorage.setItem('mall_username', user.username)
   } catch {
     clearAuthSession()
@@ -59,6 +67,9 @@ onBeforeUnmount(() => {
         <RouterLink v-show="isLoggedIn" to="/cart">购物车</RouterLink>
         <RouterLink v-show="isLoggedIn" to="/orders">订单</RouterLink>
         <RouterLink v-show="isLoggedIn" to="/addresses">地址</RouterLink>
+        <RouterLink v-show="canManageMerchantProducts" to="/merchant/products">商家上架</RouterLink>
+        <RouterLink v-show="canManageMerchantProducts" to="/merchant/shipping">商家订单</RouterLink>
+        <RouterLink v-show="canManageMerchantProducts" to="/merchant/service-messages">商家客服</RouterLink>
         <RouterLink v-show="isLoggedIn" to="/user-center">用户中心</RouterLink>
       </nav>
       <div class="auth-block">
