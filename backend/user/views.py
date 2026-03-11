@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.utils import timezone
 from typing import cast
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,8 +8,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .address_serializers import AddressSerializer
-from .models import Address, User
+from .models import Address, QualificationApplication, User
 from .serializers import (
+    QualificationApplicationAdminSerializer,
+    QualificationApplicationCreateSerializer,
+    QualificationApplicationReviewSerializer,
+    QualificationApplicationSerializer,
     LoginSerializer,
     RegisterSerializer,
     UserRoleListSerializer,
@@ -193,3 +198,96 @@ class AdminUserRoleUpdateView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"code": 0, "message": "ok", "data": UserSerializer(user).data})
+
+
+class QualificationApplicationListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        applications = QualificationApplication.objects.filter(user=request.user)
+        serializer = QualificationApplicationSerializer(applications, many=True)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
+
+    def post(self, request):
+        serializer = QualificationApplicationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        payload = cast(dict[str, str], serializer.validated_data)
+        application_type = payload["application_type"]
+        if QualificationApplication.objects.filter(
+            user=request.user,
+            application_type=application_type,
+            status=QualificationApplication.STATUS_PENDING,
+        ).exists():
+            return Response({"code": 1010, "message": "已有同类型待审核申请，请勿重复提交"}, status=status.HTTP_400_BAD_REQUEST)
+
+        application = serializer.save(user=request.user)
+        return Response(
+            {"code": 0, "message": "ok", "data": QualificationApplicationSerializer(application).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AdminQualificationApplicationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_admin_role:
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = QualificationApplication.objects.select_related("user", "reviewed_by").all()
+
+        status_value = request.query_params.get("status")
+        type_value = request.query_params.get("application_type")
+        user_id_value = request.query_params.get("user_id")
+
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        if type_value:
+            queryset = queryset.filter(application_type=type_value)
+        if user_id_value:
+            queryset = queryset.filter(user_id=user_id_value)
+
+        serializer = QualificationApplicationAdminSerializer(queryset, many=True)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
+
+
+class AdminQualificationApplicationReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if not request.user.is_admin_role:
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            application = QualificationApplication.objects.select_related("user", "reviewed_by").get(pk=pk)
+        except QualificationApplication.DoesNotExist:
+            return Response({"code": 1008, "message": "资质申请不存在"}, status=status.HTTP_404_NOT_FOUND)
+
+        if application.status != QualificationApplication.STATUS_PENDING:
+            return Response({"code": 1011, "message": "该申请已审核，不能重复审核"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = QualificationApplicationReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        payload = cast(dict[str, str], serializer.validated_data)
+        review_status = payload["status"]
+        review_note = payload.get("review_note", "").strip()
+
+        application.status = review_status
+        application.review_note = review_note
+        application.reviewed_by = request.user
+        application.reviewed_at = timezone.now()
+        application.save(update_fields=["status", "review_note", "reviewed_by", "reviewed_at", "updated_at"])
+
+        # 商家申请通过后自动授予商家角色；工作人员申请只做资质记录。
+        if (
+            application.application_type == QualificationApplication.TYPE_MERCHANT
+            and review_status == QualificationApplication.STATUS_APPROVED
+            and application.user.role != User.ROLE_ADMIN
+        ):
+            application.user.role = User.ROLE_MERCHANT
+            application.user.save(update_fields=["role", "is_staff"])
+
+        application.refresh_from_db()
+        return Response({"code": 0, "message": "ok", "data": QualificationApplicationAdminSerializer(application).data})

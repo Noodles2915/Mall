@@ -25,6 +25,14 @@ class ProductCategory(models.Model):
 
 
 class Product(models.Model):
+    merchant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="merchant_products",
+        null=True,
+        blank=True,
+        verbose_name="所属商家",
+    )
     category = models.ForeignKey(
         ProductCategory,
         on_delete=models.PROTECT,

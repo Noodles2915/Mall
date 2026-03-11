@@ -336,6 +336,13 @@ class AdminOrderViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+    def get_manageable_orders(self, request):
+        if request.user.is_admin_role:
+            return Order.objects.all()
+        if request.user.is_merchant_role:
+            return Order.objects.filter(items__product__merchant=request.user).distinct()
+        return Order.objects.none()
+
     @action(detail=False, methods=['get'])
     def list(self, request):
         """获取所有订单列表"""
@@ -345,12 +352,14 @@ class AdminOrderViewSet(viewsets.ViewSet):
 
         # 支持按状态筛选
         status_filter = request.query_params.get('status')
+        orders = self.get_manageable_orders(request)
         if status_filter:
-            orders = Order.objects.filter(status=status_filter)
-        else:
-            orders = Order.objects.all()
+            orders = orders.filter(status=status_filter)
 
-        serializer = OrderListSerializer(orders, many=True)
+        serializer_context = {}
+        if request.user.is_merchant_role:
+            serializer_context['merchant_user'] = request.user
+        serializer = OrderListSerializer(orders, many=True, context=serializer_context)
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path=r'(?P<order_id>\d+)/ship')
@@ -360,11 +369,12 @@ class AdminOrderViewSet(viewsets.ViewSet):
         if admin_check:
             return admin_check
 
+        manageable_orders = self.get_manageable_orders(request)
         try:
-            order = Order.objects.get(id=order_id)
+            order = manageable_orders.get(id=order_id)
         except Order.DoesNotExist:
             return Response(
-                {'error': '订单不存在'},
+                {'error': '订单不存在或无权限操作'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -382,5 +392,8 @@ class AdminOrderViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        order_serializer = OrderSerializer(order)
+        serializer_context = {}
+        if request.user.is_merchant_role:
+            serializer_context['merchant_user'] = request.user
+        order_serializer = OrderSerializer(order, context=serializer_context)
         return Response(order_serializer.data)

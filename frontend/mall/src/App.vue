@@ -1,41 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, reactive } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { getMe, login } from '@/services/user-center'
+import { getMe } from '@/services/user-center'
+import { clearAuthSession, getAuthState, onAuthChanged } from '@/utils/auth'
 
-const ACCESS_TOKEN_KEY = 'mall_access_token'
-const REFRESH_TOKEN_KEY = 'mall_refresh_token'
-const USERNAME_KEY = 'mall_username'
-
-const accessToken = ref(localStorage.getItem(ACCESS_TOKEN_KEY) || '')
-const refreshToken = ref(localStorage.getItem(REFRESH_TOKEN_KEY) || '')
-const username = ref(localStorage.getItem(USERNAME_KEY) || '')
-const authError = ref('')
-const authLoading = ref(false)
-
-const loginForm = reactive({
-  username: '',
-  password: '',
-})
+const accessToken = ref('')
+const refreshToken = ref('')
+const username = ref('')
+let stopAuthListener: (() => void) | null = null
 
 const isLoggedIn = computed(() => Boolean(accessToken.value))
 
-function setTokens(access: string, refresh: string, user: string) {
-  accessToken.value = access
-  refreshToken.value = refresh
-  username.value = user
-  localStorage.setItem(ACCESS_TOKEN_KEY, access)
-  localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
-  localStorage.setItem(USERNAME_KEY, user)
-}
-
-function clearTokens() {
-  accessToken.value = ''
-  refreshToken.value = ''
-  username.value = ''
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
-  localStorage.removeItem(USERNAME_KEY)
+function syncAuthState() {
+  const state = getAuthState()
+  accessToken.value = state.accessToken
+  refreshToken.value = state.refreshToken
+  username.value = state.username
 }
 
 async function hydrateUser() {
@@ -45,34 +25,27 @@ async function hydrateUser() {
   try {
     const user = await getMe(accessToken.value)
     username.value = user.username
-    localStorage.setItem(USERNAME_KEY, user.username)
+    localStorage.setItem('mall_username', user.username)
   } catch {
-    clearTokens()
-  }
-}
-
-async function submitLogin() {
-  authError.value = ''
-  authLoading.value = true
-  try {
-    const payload = await login(loginForm)
-    setTokens(payload.access, payload.refresh, payload.user.username)
-    loginForm.password = ''
-  } catch (error) {
-    authError.value = error instanceof Error ? error.message : '登录失败'
-  } finally {
-    authLoading.value = false
+    clearAuthSession()
+    syncAuthState()
   }
 }
 
 function logout() {
-  clearTokens()
-  loginForm.username = ''
-  loginForm.password = ''
+  clearAuthSession()
+  syncAuthState()
 }
 
 onMounted(() => {
+  syncAuthState()
+  stopAuthListener = onAuthChanged(syncAuthState)
   void hydrateUser()
+})
+
+onBeforeUnmount(() => {
+  stopAuthListener?.()
+  stopAuthListener = null
 })
 </script>
 
@@ -86,20 +59,16 @@ onMounted(() => {
         <RouterLink v-show="isLoggedIn" to="/cart">购物车</RouterLink>
         <RouterLink v-show="isLoggedIn" to="/orders">订单</RouterLink>
         <RouterLink v-show="isLoggedIn" to="/addresses">地址</RouterLink>
+        <RouterLink v-show="isLoggedIn" to="/user-center">用户中心</RouterLink>
       </nav>
       <div class="auth-block">
         <p v-if="isLoggedIn" class="welcome">欢迎，{{ username || '已登录用户' }}</p>
-        <form v-else class="mini-login" @submit.prevent="submitLogin">
-          <input v-model="loginForm.username" placeholder="用户名" required />
-          <input v-model="loginForm.password" type="password" placeholder="密码" required />
-          <button type="submit" :disabled="authLoading">{{ authLoading ? '登录中' : '登录' }}</button>
-        </form>
+        <RouterLink v-if="!isLoggedIn" class="auth-link" to="/login">登录</RouterLink>
         <RouterLink v-if="!isLoggedIn" class="register-link" to="/register">注册</RouterLink>
+        <RouterLink v-if="isLoggedIn" class="auth-link" to="/user-center">个人中心</RouterLink>
         <button v-if="isLoggedIn" class="ghost-btn" type="button" @click="logout">退出</button>
       </div>
     </header>
-
-    <p v-if="authError" class="auth-error">{{ authError }}</p>
 
     <main class="content-wrap">
       <RouterView />
@@ -159,20 +128,7 @@ onMounted(() => {
   align-items: center;
 }
 
-.mini-login {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.mini-login input {
-  width: 7rem;
-  border: 1px solid #b6cfdc;
-  border-radius: 0.6rem;
-  padding: 0.45rem 0.55rem;
-}
-
-.mini-login button,
+.auth-link,
 .ghost-btn,
 .register-link {
   border: none;
@@ -183,6 +139,10 @@ onMounted(() => {
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
+}
+
+.auth-link {
+  background: #1f9f78;
 }
 
 .ghost-btn {
@@ -199,13 +159,6 @@ onMounted(() => {
   color: #1d5166;
 }
 
-.auth-error {
-  margin: 0;
-  padding: 0.45rem 1.5rem;
-  color: #8e3026;
-  background: #ffe8e3;
-}
-
 .content-wrap {
   width: min(1120px, 94vw);
   margin: 1.5rem auto 2rem;
@@ -216,15 +169,9 @@ onMounted(() => {
     align-items: flex-start;
   }
 
-  .auth-block,
-  .mini-login {
+  .auth-block {
     width: 100%;
     flex-wrap: wrap;
-  }
-
-  .mini-login input {
-    flex: 1;
-    min-width: 8.5rem;
   }
 }
 </style>

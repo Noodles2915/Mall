@@ -3,12 +3,14 @@ import Home from '@/views/Home.vue'
 import ProductList from '@/views/ProductList.vue'
 import ProductDetail from '@/views/ProductDetail.vue'
 import Register from '@/views/Register.vue'
+import Login from '@/views/Login.vue'
 import AddressManagement from '@/views/AddressManagement.vue'
 import ShoppingCart from '@/views/ShoppingCart.vue'
 import OrderConfirm from '@/views/OrderConfirm.vue'
 import OrderPayment from '@/views/OrderPayment.vue'
 import OrderList from '@/views/OrderList.vue'
 import OrderDetail from '@/views/OrderDetail.vue'
+import UserCenter from '@/views/UserCenter.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +34,11 @@ const router = createRouter({
       path: '/register',
       name: 'Register',
       component: Register,
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: Login,
     },
     {
       path: '/addresses',
@@ -62,6 +69,11 @@ const router = createRouter({
       path: '/orders/:id',
       name: 'OrderDetail',
       component: OrderDetail,
+    },
+    {
+      path: '/user-center',
+      name: 'UserCenter',
+      component: UserCenter,
     },
     {
       path: '/',

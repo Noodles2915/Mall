@@ -68,7 +68,7 @@ onMounted(() => {
 
     <div v-if="!isLoggedIn" class="not-logged-in">
       <p>请登录后查看订单</p>
-      <RouterLink to="/home" class="btn-primary">返回首页登录</RouterLink>
+      <RouterLink to="/login" class="btn-primary">前往登录</RouterLink>
     </div>
 
     <template v-else>

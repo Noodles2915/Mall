@@ -1,4 +1,11 @@
-import type { AddressForm, AddressItem, AuthPayload, UserProfile } from '@/types/user-center'
+import type {
+  AddressForm,
+  AddressItem,
+  AuthPayload,
+  QualificationApplicationItem,
+  QualificationApplicationType,
+  UserProfile,
+} from '@/types/user-center'
 import { request } from '@/utils/http'
 
 export function login(payload: { username: string; password: string }) {
@@ -38,4 +45,25 @@ export function deleteAddress(id: number, accessToken: string) {
 
 export function setDefaultAddress(id: number, accessToken: string) {
   return request<AddressItem>(`/api/auth/addresses/${id}/default/`, 'POST', {}, accessToken)
+}
+
+export function getQualificationApplications(accessToken: string) {
+  return request<QualificationApplicationItem[]>(
+    '/api/auth/qualification-applications/',
+    'GET',
+    undefined,
+    accessToken,
+  )
+}
+
+export function submitQualificationApplication(
+  payload: { application_type: QualificationApplicationType; reason: string },
+  accessToken: string,
+) {
+  return request<QualificationApplicationItem>(
+    '/api/auth/qualification-applications/',
+    'POST',
+    payload,
+    accessToken,
+  )
 }

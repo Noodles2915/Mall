@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import User
+from .models import QualificationApplication, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -78,3 +78,66 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["role"]
+
+
+class QualificationApplicationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QualificationApplication
+        fields = ["application_type", "reason"]
+
+    def validate_reason(self, value):
+        reason = value.strip()
+        if not reason:
+            raise serializers.ValidationError("申请说明不能为空")
+        return reason
+
+
+class QualificationApplicationSerializer(serializers.ModelSerializer):
+    application_type_display = serializers.CharField(source="get_application_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = QualificationApplication
+        fields = [
+            "id",
+            "application_type",
+            "application_type_display",
+            "reason",
+            "status",
+            "status_display",
+            "review_note",
+            "created_at",
+            "reviewed_at",
+        ]
+
+
+class QualificationApplicationAdminSerializer(QualificationApplicationSerializer):
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    user_role = serializers.CharField(source="user.role", read_only=True)
+    reviewed_by_id = serializers.IntegerField(source="reviewed_by.id", read_only=True)
+    reviewed_by_username = serializers.CharField(source="reviewed_by.username", read_only=True)
+
+    class Meta(QualificationApplicationSerializer.Meta):
+        fields = QualificationApplicationSerializer.Meta.fields + [
+            "user_id",
+            "username",
+            "user_role",
+            "reviewed_by_id",
+            "reviewed_by_username",
+        ]
+
+
+class QualificationApplicationReviewSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[
+            QualificationApplication.STATUS_APPROVED,
+            QualificationApplication.STATUS_REJECTED,
+        ]
+    )
+    review_note = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if attrs["status"] == QualificationApplication.STATUS_REJECTED and not attrs.get("review_note", "").strip():
+            raise serializers.ValidationError({"review_note": "驳回时请填写审核备注"})
+        return attrs

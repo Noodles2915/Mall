@@ -23,6 +23,7 @@ class HomeBannerSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
+    merchant_id = serializers.IntegerField(source="merchant.id", read_only=True)
 
     class Meta:
         model = Product
@@ -35,14 +36,17 @@ class ProductListSerializer(serializers.ModelSerializer):
             "stock",
             "sales",
             "is_hot",
+            "is_active",
             "category",
             "category_name",
+            "merchant_id",
         ]
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category = ProductCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
+    merchant_id = serializers.IntegerField(source="merchant.id", read_only=True)
 
     class Meta:
         model = Product
@@ -60,7 +64,53 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "customer_service_hint",
             "category",
             "images",
+            "is_active",
+            "merchant_id",
         ]
+
+
+class MerchantProductCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            "category",
+            "name",
+            "subtitle",
+            "cover_url",
+            "price",
+            "stock",
+            "is_hot",
+            "is_active",
+            "description",
+            "specs",
+            "customer_service_hint",
+        ]
+
+
+class MerchantProductDetailSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source="category.name", read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "category",
+            "category_name",
+            "name",
+            "subtitle",
+            "cover_url",
+            "price",
+            "stock",
+            "sales",
+            "is_hot",
+            "is_active",
+            "description",
+            "specs",
+            "customer_service_hint",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "sales", "created_at", "updated_at"]
 
 
 class ServiceMessageSerializer(serializers.ModelSerializer):

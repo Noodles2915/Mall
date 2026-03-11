@@ -55,7 +55,7 @@ async function handleSubmit() {
     })
     success.value = '注册成功，正在跳转...'
     setTimeout(() => {
-      router.push('/home')
+      router.push('/login')
     }, 1500)
   } catch (err) {
     error.value = err instanceof Error ? err.message : '注册失败'
@@ -124,7 +124,7 @@ async function handleSubmit() {
       </form>
 
       <p class="login-link">
-        已有账户？<RouterLink to="/home">返回首页登录</RouterLink>
+        已有账户？<RouterLink to="/login">前往登录</RouterLink>
       </p>
     </div>
   </div>

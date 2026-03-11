@@ -99,6 +99,14 @@ class OrderSerializer(serializers.ModelSerializer):
             'items', 'created_at', 'paid_at', 'shipped_at', 'received_at', 'cancelled_at'
         ]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        merchant_user = self.context.get('merchant_user')
+        if merchant_user:
+            item_queryset = instance.items.filter(product__merchant=merchant_user)
+            data['items'] = OrderItemReadSerializer(item_queryset, many=True).data
+        return data
+
 
 class OrderPaySerializer(serializers.Serializer):
     """订单支付序列化器"""
@@ -115,4 +123,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = ['id', 'order_number', 'status', 'status_display', 'total_price', 'items_count', 'created_at']
 
     def get_items_count(self, obj):
+        merchant_user = self.context.get('merchant_user')
+        if merchant_user:
+            return obj.items.filter(product__merchant=merchant_user).count()
         return obj.items.count()

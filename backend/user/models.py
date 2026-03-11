@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
 
 from utils import avatar_path
 
@@ -66,3 +67,63 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.name} {self.phone} {self.detail}"
+
+
+class QualificationApplication(models.Model):
+    TYPE_MERCHANT = "merchant"
+    TYPE_STAFF = "staff"
+    TYPE_CHOICES = [
+        (TYPE_MERCHANT, "商家资质"),
+        (TYPE_STAFF, "工作人员资质"),
+    ]
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "待审核"),
+        (STATUS_APPROVED, "已通过"),
+        (STATUS_REJECTED, "已驳回"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="qualification_applications",
+        verbose_name="申请用户",
+    )
+    application_type = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="申请类型")
+    reason = models.TextField(max_length=1000, verbose_name="申请说明")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        verbose_name="审核状态",
+    )
+    review_note = models.CharField(max_length=255, blank=True, default="", verbose_name="审核备注")
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_qualification_applications",
+        verbose_name="审核人",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="审核时间")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "资质申请"
+        verbose_name_plural = "资质申请"
+        ordering = ["-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "application_type", "status"],
+                condition=Q(status="pending"),
+                name="uniq_pending_qualification_application",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}-{self.get_application_type_display()}-{self.get_status_display()}"

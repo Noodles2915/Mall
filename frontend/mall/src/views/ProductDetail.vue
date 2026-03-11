@@ -106,7 +106,7 @@ async function submitServiceMessage() {
 
 async function handleAddToCart() {
   if (!isLoggedIn.value) {
-    router.push('/home')
+    router.push('/login')
     return
   }
 
@@ -247,7 +247,7 @@ onMounted(() => {
           <button
             class="login-btn"
             type="button"
-            @click="() => router.push({ path: '/home', query: { login: '1' } })"
+            @click="() => router.push({ path: '/login', query: { redirect: $route.fullPath } })"
           >
             返回登录
           </button>

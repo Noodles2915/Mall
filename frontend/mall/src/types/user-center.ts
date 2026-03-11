@@ -9,6 +9,8 @@ export interface UserProfile {
   username: string
   email: string
   avatar: string
+  role?: 'normal' | 'admin' | 'merchant' | 'staff'
+  role_display?: string
 }
 
 export interface AuthPayload {
@@ -36,4 +38,19 @@ export interface AddressForm {
   district: string
   detail: string
   is_default: boolean
+}
+
+export type QualificationApplicationType = 'merchant' | 'staff'
+export type QualificationApplicationStatus = 'pending' | 'approved' | 'rejected'
+
+export interface QualificationApplicationItem {
+  id: number
+  application_type: QualificationApplicationType
+  application_type_display: string
+  reason: string
+  status: QualificationApplicationStatus
+  status_display: string
+  review_note: string
+  created_at: string
+  reviewed_at: string | null
 }

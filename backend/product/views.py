@@ -11,8 +11,20 @@ from .serializers import (
     ProductCategorySerializer,
     ProductDetailSerializer,
     ProductListSerializer,
+    MerchantProductCreateUpdateSerializer,
+    MerchantProductDetailSerializer,
     ServiceMessageSerializer,
 )
+
+
+def is_admin_or_merchant(user):
+    return bool(user.is_authenticated and (user.is_admin_role or user.is_merchant_role))
+
+
+def can_manage_product(user, product):
+    if user.is_admin_role:
+        return True
+    return user.is_merchant_role and product.merchant_id == user.id
 
 
 class ProductHomeView(APIView):
@@ -118,3 +130,72 @@ class ServiceMessageListCreateView(generics.ListCreateAPIView):
             {"code": 0, "message": "ok", "data": self.get_serializer(message).data},
             status=status.HTTP_201_CREATED,
         )
+
+
+class MerchantProductListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not is_admin_or_merchant(request.user):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Product.objects.select_related("category").order_by("-id")
+        if request.user.is_merchant_role:
+            queryset = queryset.filter(merchant=request.user)
+
+        serializer = MerchantProductDetailSerializer(queryset, many=True)
+        return Response({"code": 0, "message": "ok", "data": serializer.data})
+
+    def post(self, request):
+        if not is_admin_or_merchant(request.user):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = MerchantProductCreateUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        merchant = request.user if request.user.is_merchant_role else None
+        product = serializer.save(merchant=merchant)
+        return Response(
+            {"code": 0, "message": "ok", "data": MerchantProductDetailSerializer(product).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MerchantProductDetailManageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        return generics.get_object_or_404(Product.objects.select_related("category"), pk=pk)
+
+    def get(self, request, pk):
+        product = self.get_object(pk)
+        if not can_manage_product(request.user, product):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"code": 0, "message": "ok", "data": MerchantProductDetailSerializer(product).data})
+
+    def put(self, request, pk):
+        product = self.get_object(pk)
+        if not can_manage_product(request.user, product):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = MerchantProductCreateUpdateSerializer(product, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"code": 0, "message": "ok", "data": MerchantProductDetailSerializer(product).data})
+
+    def patch(self, request, pk):
+        product = self.get_object(pk)
+        if not can_manage_product(request.user, product):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = MerchantProductCreateUpdateSerializer(product, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"code": 0, "message": "ok", "data": MerchantProductDetailSerializer(product).data})
+
+    def delete(self, request, pk):
+        product = self.get_object(pk)
+        if not can_manage_product(request.user, product):
+            return Response({"code": 1003, "message": "权限不足"}, status=status.HTTP_403_FORBIDDEN)
+
+        product.delete()
+        return Response({"code": 0, "message": "ok"}, status=status.HTTP_200_OK)
