@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
+from django.conf import settings
 from django.utils import timezone
 from typing import cast
 from rest_framework import generics, status
@@ -8,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .address_serializers import AddressSerializer
+from .email_verification import can_resend_email_code, generate_email_code, store_email_code
 from .models import Address, QualificationApplication, User
 from .serializers import (
     QualificationApplicationAdminSerializer,
@@ -16,6 +19,7 @@ from .serializers import (
     QualificationApplicationSerializer,
     LoginSerializer,
     RegisterSerializer,
+    SendEmailCodeSerializer,
     UserRoleListSerializer,
     UserRoleUpdateSerializer,
     UserInfoUpdateSerializer,
@@ -47,6 +51,33 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return build_token_response(user, status.HTTP_201_CREATED)
+
+
+class SendRegisterEmailCodeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SendEmailCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = cast(str, serializer.validated_data["email"])
+        if not can_resend_email_code(email):
+            return Response({"code": 1012, "message": "发送过于频繁，请60秒后重试"}, status=status.HTTP_400_BAD_REQUEST)
+
+        code = generate_email_code()
+        try:
+            send_mail(
+                subject="商城注册验证码",
+                message=f"您的注册验证码是：{code}，5分钟内有效。",
+                from_email=getattr(settings, "EMAIL_HOST_USER", None),
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception:
+            return Response({"code": 1013, "message": "验证码发送失败，请稍后再试"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        store_email_code(email, code)
+        return Response({"code": 0, "message": "验证码已发送"})
 
 
 class LoginView(APIView):

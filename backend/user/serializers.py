@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .email_verification import consume_email_code, validate_email_code
 from .models import QualificationApplication, User
 
 
@@ -15,10 +16,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     # Override default username field validators to allow common Chinese usernames.
     username = serializers.CharField(max_length=150, trim_whitespace=True)
     password = serializers.CharField(write_only=True)
+    email_code = serializers.CharField(write_only=True, min_length=6, max_length=6)
 
     class Meta:
         model = User
-        fields = ["username", "email", "password"]
+        fields = ["username", "email", "password", "email_code"]
 
     def validate_username(self, value):
         username = value.strip()
@@ -38,8 +40,33 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("密码长度不能少于6位")
         return value
 
+    def validate_email_code(self, value):
+        code = value.strip()
+        if not code.isdigit() or len(code) != 6:
+            raise serializers.ValidationError("验证码格式不正确")
+        return code
+
+    def validate(self, attrs):
+        is_valid, message = validate_email_code(attrs["email"], attrs["email_code"])
+        if not is_valid:
+            raise serializers.ValidationError({"email_code": message})
+        return attrs
+
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        email = validated_data["email"]
+        validated_data.pop("email_code", None)
+        user = User.objects.create_user(**validated_data)
+        consume_email_code(email)
+        return user
+
+
+class SendEmailCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("邮箱已被使用")
+        return value
 
 
 class LoginSerializer(serializers.Serializer):

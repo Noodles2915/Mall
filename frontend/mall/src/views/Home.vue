@@ -99,7 +99,7 @@ onMounted(() => {
         >
           <div class="product-image">
             <img :src="product.cover_url" :alt="product.name" />
-            <div v-if="product.is_hot" class="hot-badge">热売</div>
+            <div v-if="product.is_hot" class="hot-badge">热卖</div>
           </div>
           <div class="product-info">
             <h3 class="product-name">{{ product.name }}</h3>

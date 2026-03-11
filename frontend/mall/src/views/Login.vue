@@ -22,9 +22,11 @@ async function handleLogin() {
   loading.value = true
   try {
     const payload = await login(form)
-    setAuthSession(payload.access, payload.refresh, payload.user.username)
+    const role = payload.user.role || ''
+    setAuthSession(payload.access, payload.refresh, payload.user.username, role)
     form.password = ''
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
+    const defaultRoute = role === 'admin' || role === 'merchant' ? '/merchant/products' : '/home'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : defaultRoute
     await router.push(redirect)
   } catch (err) {
     error.value = err instanceof Error ? err.message : '登录失败'

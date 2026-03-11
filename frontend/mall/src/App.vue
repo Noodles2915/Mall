@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { getMe } from '@/services/user-center'
-import { clearAuthSession, getAuthState, onAuthChanged } from '@/utils/auth'
+import { clearAuthSession, getAuthState, onAuthChanged, setAuthSession } from '@/utils/auth'
 
 const accessToken = ref('')
 const refreshToken = ref('')
@@ -20,6 +20,7 @@ function syncAuthState() {
   accessToken.value = state.accessToken
   refreshToken.value = state.refreshToken
   username.value = state.username
+  userRole.value = state.role
   if (!state.accessToken) {
     userRole.value = ''
   }
@@ -33,7 +34,7 @@ async function hydrateUser() {
     const user = await getMe(accessToken.value)
     username.value = user.username
     userRole.value = user.role || ''
-    localStorage.setItem('mall_username', user.username)
+    setAuthSession(accessToken.value, refreshToken.value, user.username, user.role || '')
   } catch {
     clearAuthSession()
     syncAuthState()

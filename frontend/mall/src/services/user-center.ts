@@ -12,7 +12,16 @@ export function login(payload: { username: string; password: string }) {
   return request<AuthPayload>('/api/auth/login/', 'POST', payload)
 }
 
-export function register(payload: { username: string; email: string; password: string }) {
+export function sendRegisterEmailCode(payload: { email: string }) {
+  return request<null>('/api/auth/register/email-code/', 'POST', payload)
+}
+
+export function register(payload: {
+  username: string
+  email: string
+  password: string
+  email_code: string
+}) {
   return request<AuthPayload>('/api/auth/register/', 'POST', payload)
 }
 

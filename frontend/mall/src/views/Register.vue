@@ -1,20 +1,72 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { register } from '@/services/user-center'
+import { register, sendRegisterEmailCode } from '@/services/user-center'
 
 const router = useRouter()
 
 const form = reactive({
   username: '',
   email: '',
+  emailCode: '',
   password: '',
   passwordConfirm: '',
 })
 
 const loading = ref(false)
+const sendingCode = ref(false)
+const codeCountdown = ref(0)
 const error = ref('')
 const success = ref('')
+let codeTimer: ReturnType<typeof setInterval> | null = null
+
+function clearCodeTimer() {
+  if (codeTimer) {
+    clearInterval(codeTimer)
+    codeTimer = null
+  }
+}
+
+function startCodeCountdown() {
+  clearCodeTimer()
+  codeCountdown.value = 60
+  codeTimer = setInterval(() => {
+    if (codeCountdown.value <= 1) {
+      codeCountdown.value = 0
+      clearCodeTimer()
+      return
+    }
+    codeCountdown.value -= 1
+  }, 1000)
+}
+
+async function handleSendEmailCode() {
+  error.value = ''
+  success.value = ''
+
+  if (!form.email.trim()) {
+    error.value = '请先输入邮箱'
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    error.value = '邮箱格式不正确'
+    return
+  }
+  if (codeCountdown.value > 0 || sendingCode.value) {
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    await sendRegisterEmailCode({ email: form.email })
+    success.value = '验证码已发送，请查收邮箱'
+    startCodeCountdown()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '验证码发送失败'
+  } finally {
+    sendingCode.value = false
+  }
+}
 
 async function handleSubmit() {
   error.value = ''
@@ -37,6 +89,14 @@ async function handleSubmit() {
     error.value = '密码不能为空'
     return
   }
+  if (!form.emailCode.trim()) {
+    error.value = '验证码不能为空'
+    return
+  }
+  if (!/^\d{6}$/.test(form.emailCode.trim())) {
+    error.value = '验证码应为6位数字'
+    return
+  }
   if (form.password.length < 6) {
     error.value = '密码长度至少为6个字符'
     return
@@ -52,6 +112,7 @@ async function handleSubmit() {
       username: form.username,
       email: form.email,
       password: form.password,
+      email_code: form.emailCode.trim(),
     })
     success.value = '注册成功，正在跳转...'
     setTimeout(() => {
@@ -63,6 +124,10 @@ async function handleSubmit() {
     loading.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  clearCodeTimer()
+})
 </script>
 
 <template>
@@ -94,6 +159,28 @@ async function handleSubmit() {
             placeholder="请输入邮箱地址"
             required
           />
+        </div>
+
+        <div class="form-group">
+          <label for="emailCode">邮箱验证码</label>
+          <div class="verification-row">
+            <input
+              id="emailCode"
+              v-model="form.emailCode"
+              type="text"
+              maxlength="6"
+              placeholder="请输入6位验证码"
+              required
+            />
+            <button
+              type="button"
+              class="btn-secondary"
+              :disabled="sendingCode || codeCountdown > 0"
+              @click="handleSendEmailCode"
+            >
+              {{ codeCountdown > 0 ? `${codeCountdown}s后重发` : sendingCode ? '发送中...' : '发送验证码' }}
+            </button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -174,6 +261,31 @@ h1 {
   border-radius: 0.6rem;
   font-size: 0.95rem;
   transition: border-color 0.2s;
+}
+
+.verification-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.verification-row input {
+  flex: 1;
+}
+
+.btn-secondary {
+  flex: 0 0 120px;
+  border: 1px solid #1f9f78;
+  background: #eefaf5;
+  color: #0c6f57;
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .form-group input:focus {
