@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/types/user-center'
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 const API_BASE_URL =
-  (globalThis as { __MALL_API_BASE_URL__?: string }).__MALL_API_BASE_URL__?.trim() || ''
+  'http://localhost:8000' /* 生产环境请替换为实际后端地址，开发环境可使用代理或本地地址 */
 
 function buildUrl(path: string): string {
   if (/^https?:\/\//.test(path)) {

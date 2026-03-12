@@ -95,7 +95,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'malldb',
         'USER': 'root',
-        'PASSWORD': environ.get("DATABASE_PW") or ''
+        'PASSWORD': environ.get("DATABASE_PW") or '',
+        'HOST': environ.get("DATABASE_HOST") or 'localhost',
+        'PORT': environ.get("DATABASE_PORT") or '3306',
     }
 }
 
@@ -153,8 +155,10 @@ EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD')
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
+    'http://localhost:4173',
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    'http://127.0.0.1:4173',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
